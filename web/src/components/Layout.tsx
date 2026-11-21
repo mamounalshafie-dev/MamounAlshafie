@@ -4,52 +4,56 @@ import {
   LayoutDashboard, FolderKanban, ListChecks, Clock3, Users, FileText, Receipt, ShoppingCart,
   Building2, Package, Landmark, BarChart3, UserCog, CalendarDays, Wallet, Settings, Activity,
   Search, Bell, Sun, Moon, Menu, X, LogOut, Plus, ChevronDown, BookOpen, ShieldCheck, Sparkles,
-  CircleDollarSign, ClipboardList, ArrowLeftRight, HandCoins,
+  CircleDollarSign, ClipboardList, ArrowLeftRight, HandCoins, Map as MapIcon, Home, Wifi, Wrench,
+  HardHat, FileSignature, CalendarClock, Building,
 } from 'lucide-react';
 import { useAuth, useApi, useToast } from '../lib/app-context';
 import { api, ApiError } from '../lib/api';
 import { Avatar, Badge, Spinner } from './ui';
 import { cx, formatDateTime, relativeTime } from '../lib/format';
 import { CommandPalette } from './CommandPalette';
+import { useRe } from '../lib/re-context';
 
 const NAV = [
   {
     label: 'الرئيسية',
     items: [
-      { to: '/', label: 'لوحة التحكم', icon: LayoutDashboard, exact: true },
-      { to: '/reports', label: 'التقارير والتحليلات', icon: BarChart3 },
+      { to: '/', label: 'لوحة القيادة', icon: LayoutDashboard, exact: true },
+      { to: '/re/reports', label: 'التقارير والتحليلات', icon: BarChart3 },
     ],
   },
   {
-    label: 'المشاريع',
+    label: 'المشاريع والوحدات',
     items: [
-      { to: '/projects', label: 'المشاريع', icon: FolderKanban, badge: 'projects' },
-      { to: '/tasks', label: 'المهام', icon: ListChecks, badge: 'tasks' },
-      { to: '/timesheets', label: 'سجل الأوقات', icon: Clock3 },
+      { to: '/re/plan', label: 'مخطط الموقع', icon: MapIcon },
+      { to: '/re/units', label: 'الوحدات', icon: Home },
+      { to: '/re/partners', label: 'العملاء والمستثمرون', icon: Users },
     ],
   },
   {
-    label: 'المبيعات',
+    label: 'العقود والتحصيل',
     items: [
-      { to: '/customers', label: 'العملاء', icon: Users },
-      { to: '/quotations', label: 'عروض الأسعار', icon: FileText, badge: 'quotations' },
-      { to: '/invoices', label: 'الفواتير', icon: Receipt, badge: 'overdueInvoices', warn: true },
+      { to: '/re/contracts', label: 'العقود', icon: FileSignature },
+      { to: '/re/installments', label: 'الأقساط', icon: CalendarClock },
+      { to: '/re/collections', label: 'التحصيل', icon: HandCoins },
     ],
   },
   {
-    label: 'المشتريات والمخزون',
+    label: 'الخدمات والصيانة',
     items: [
-      { to: '/vendors', label: 'الموردون', icon: Building2 },
-      { to: '/purchase-orders', label: 'أوامر الشراء', icon: ShoppingCart },
-      { to: '/inventory', label: 'المخزون والمنتجات', icon: Package, badge: 'lowStock', warn: true },
+      { to: '/re/services', label: 'الخدمات', icon: Wifi },
+      { to: '/re/maintenance', label: 'الصيانة', icon: Wrench },
     ],
   },
   {
     label: 'المالية',
     items: [
-      { to: '/accounting', label: 'المحاسبة', icon: Landmark },
-      { to: '/accounting/journal', label: 'قيود اليومية', icon: BookOpen },
-      { to: '/accounting/reports', label: 'القوائم المالية', icon: ClipboardList },
+      { to: '/re/costs', label: 'التكاليف', icon: HardHat },
+      { to: '/re/treasury', label: 'الصندوق والبنوك', icon: Landmark },
+      { to: '/re/accounts', label: 'ربط الحسابات العقارية', icon: ArrowLeftRight },
+      { to: '/accounting', label: 'دليل الحسابات', icon: BookOpen },
+      { to: '/accounting/journal', label: 'قيود اليومية', icon: ClipboardList },
+      { to: '/accounting/reports', label: 'القوائم المالية', icon: FileText },
     ],
   },
   {
@@ -59,6 +63,16 @@ const NAV = [
       { to: '/hr/attendance', label: 'الحضور والانصراف', icon: CalendarDays },
       { to: '/hr/payroll', label: 'الرواتب', icon: Wallet },
       { to: '/hr/leaves', label: 'الإجازات', icon: HandCoins, badge: 'pendingLeaves', warn: true },
+    ],
+  },
+  {
+    label: 'وحدات إضافية',
+    items: [
+      { to: '/projects', label: 'المشاريع التشغيلية', icon: FolderKanban },
+      { to: '/tasks', label: 'المهام', icon: ListChecks },
+      { to: '/invoices', label: 'الفواتير', icon: Receipt },
+      { to: '/inventory', label: 'المخزون', icon: Package },
+      { to: '/customers', label: 'سجل العملاء', icon: Building },
     ],
   },
   {
@@ -82,6 +96,7 @@ export function AppLayout() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const { data: nav } = useApi<any>('/nav-counts', [location.pathname]);
+  const { projects: reProjects, code: reCode, setCode: setReProject } = useRe();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -98,13 +113,15 @@ export function AppLayout() {
       .filter((i) => (i.exact || i.to === '/' ? location.pathname === i.to : location.pathname.startsWith(i.to)))
       .sort((a, b) => b.to.length - a.to.length)[0];
     const label = match?.label
+      || (location.pathname.startsWith('/re/plan') ? 'مخطط الموقع' : '')
+      || (location.pathname.startsWith('/re/units') ? 'الوحدات' : '')
       || (location.pathname === '/profile' ? 'الملف الشخصي' : '')
       || (location.pathname.startsWith('/projects/') ? 'تفاصيل المشروع' : '')
       || (location.pathname.startsWith('/invoices/') ? 'تفاصيل الفاتورة' : '')
       || (location.pathname.startsWith('/customers/') ? 'ملف العميل' : '')
       || (location.pathname.startsWith('/inventory/') ? 'تفاصيل المنتج' : '')
       || (location.pathname.startsWith('/hr/employees/') ? 'ملف الموظف' : '');
-    document.title = label ? `${label} · نور ERP` : 'نور ERP | نظام إدارة موارد المؤسسات';
+    document.title = label ? `${label} · المدن الحديثة` : 'المدن الحديثة | نظام إدارة المشاريع العقارية';
   }, [location.pathname]);
 
   useEffect(() => {
@@ -138,15 +155,16 @@ export function AppLayout() {
       {sidebarOpen && <div className="drawer-overlay" style={{ zIndex: 55 }} onClick={() => setSidebarOpen(false)} />}
       <aside className={cx('sidebar', sidebarOpen && 'open')} style={collapsed ? { width: 'var(--sidebar-collapsed)' } : undefined}>
         <div className="sidebar-brand">
-          <Link to="/" className="brand-mark" aria-label="نور ERP">
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-              <path d="M5 19V5l14 14V5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          <Link to="/" className="brand-mark" aria-label="المدن الحديثة">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M4 21V8l8-5 8 5v13" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M9 21v-6h6v6M8 11h2M14 11h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </Link>
           {!collapsed && (
             <div className="brand-text">
-              <b>نور ERP</b>
-              <span>Enterprise Suite</span>
+              <b>المدن الحديثة</b>
+              <span>Modern Cities ERP</span>
             </div>
           )}
         </div>
@@ -182,11 +200,11 @@ export function AppLayout() {
           {!collapsed ? (
             <div className="plan-card">
               <div className="row-between">
-                <b>الخطة المؤسسية</b>
-                <Sparkles size={13} color="#a5b4fc" />
+                <b>المدن الحديثة</b>
+                <Sparkles size={13} color="#e3c27c" />
               </div>
-              <span>جميع الوحدات مفعّلة · {counts.projects ?? 0} مشروع نشط</span>
-              <div className="plan-bar"><i style={{ width: '78%' }} /></div>
+              <span>{(reProjects || []).length} مشاريع عقارية · نظام متكامل</span>
+              <div className="plan-bar"><i style={{ width: '86%' }} /></div>
             </div>
           ) : (
             <button className="icon-btn" style={{ margin: '0 auto', display: 'grid' }} onClick={() => setCollapsed(false)} title="توسيع القائمة">
@@ -212,8 +230,24 @@ export function AppLayout() {
           </button>
 
           <div className="topbar-actions">
-            <Link to="/projects?new=1" className="btn btn-primary btn-sm" style={{ height: 38 }}>
-              <Plus size={15} /> جديد
+            <div className="re-project-select" style={{ position: 'relative' }}>
+              <Building2 size={15} style={{ position: 'absolute', insetInlineStart: 10, top: 11, color: 'var(--gold)', pointerEvents: 'none' }} />
+              <select
+                value={reCode}
+                onChange={(e) => setReProject(e.target.value)}
+                aria-label="اختيار المشروع"
+                style={{
+                  height: 38, borderRadius: 10, border: '1px solid rgba(200,162,74,.45)',
+                  background: 'var(--gold-soft)', paddingInlineStart: 32, paddingInlineEnd: 10,
+                  fontWeight: 700, fontSize: 12.5, color: 'var(--text)', maxWidth: 220,
+                }}
+              >
+                <option value="all">كل المشاريع</option>
+                {(reProjects || []).map((p: any) => <option key={p.code} value={p.code}>{p.name}</option>)}
+              </select>
+            </div>
+            <Link to="/re/contracts?new=1" className="btn btn-primary btn-sm" style={{ height: 38 }}>
+              <Plus size={15} /> عقد جديد
             </Link>
 
             <div style={{ position: 'relative' }}>

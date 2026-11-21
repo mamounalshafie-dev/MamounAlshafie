@@ -1,10 +1,25 @@
 import React, { Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, MetaProvider, ToastProvider, useAuth } from './lib/app-context';
+import { ReProvider } from './lib/re-context';
 import { ConfirmProvider } from './components/ui';
 import { AppLayout } from './components/Layout';
 import { PageSkeleton, Spinner } from './components/ui';
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const ReDashboard = React.lazy(() => import('./pages/ReDashboard'));
+const SitePlan = React.lazy(() => import('./pages/SitePlan'));
+const Units = React.lazy(() => import('./pages/Units'));
+const UnitDetail = React.lazy(() => import('./pages/UnitDetail'));
+const Contracts = React.lazy(() => import('./pages/Contracts'));
+const Installments = React.lazy(() => import('./pages/Installments'));
+const Collections = React.lazy(() => import('./pages/Collections'));
+const Services = React.lazy(() => import('./pages/Services'));
+const Maintenance = React.lazy(() => import('./pages/Maintenance'));
+const Costs = React.lazy(() => import('./pages/Costs'));
+const Treasury = React.lazy(() => import('./pages/Treasury'));
+const ReReports = React.lazy(() => import('./pages/ReReports'));
+const RePartners = React.lazy(() => import('./pages/RePartners'));
+const ReAccounts = React.lazy(() => import('./pages/ReAccounts'));
 const Projects = React.lazy(() => import('./pages/Projects'));
 const ProjectDetail = React.lazy(() => import('./pages/ProjectDetail'));
 const Tasks = React.lazy(() => import('./pages/Tasks'));
@@ -65,14 +80,14 @@ function Splash() {
       <div style={{ textAlign: 'center' }}>
         <div style={{
           width: 58, height: 58, borderRadius: 17, margin: '0 auto 18px',
-          background: 'linear-gradient(135deg,#4f46e5,#0ea5e9)', display: 'grid', placeItems: 'center',
-          boxShadow: '0 16px 36px -12px rgba(79,70,229,0.7)',
+          background: 'linear-gradient(135deg,#153a63,#0a1c33)', display: 'grid', placeItems: 'center',
+          boxShadow: '0 16px 36px -12px rgba(21,58,99,.7)',
         }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-            <path d="M5 19V5l14 14V5" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M4 21V8l8-5 8 5v13M9 21v-6h6v6M8 11h2M14 11h2" stroke="#e3c27c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 12 }}>نور ERP</div>
+        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 12 }}>شركة المدن الحديثة</div>
         <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--brand-600)' }}><Spinner size={22} /></div>
       </div>
     </div>
@@ -100,12 +115,27 @@ export default function App() {
       <ToastProvider>
         <ConfirmProvider>
           <MetaProvider>
+            <ReProvider>
             <ErrorBoundary>
             <Suspense fallback={<Splash />}>
             <Routes>
               <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
               <Route element={<Protected><AppLayout /></Protected>}>
-                <Route index element={<Dashboard />} />
+                <Route index element={<ReDashboard />} />
+                <Route path="/re/plan" element={<SitePlan />} />
+                <Route path="/re/units" element={<Units />} />
+                <Route path="/re/units/:id" element={<UnitDetail />} />
+                <Route path="/re/contracts" element={<Contracts />} />
+                <Route path="/re/installments" element={<Installments />} />
+                <Route path="/re/collections" element={<Collections />} />
+                <Route path="/re/services" element={<Services />} />
+                <Route path="/re/maintenance" element={<Maintenance />} />
+                <Route path="/re/costs" element={<Costs />} />
+                <Route path="/re/treasury" element={<Treasury />} />
+                <Route path="/re/reports" element={<ReReports />} />
+                <Route path="/re/partners" element={<RePartners />} />
+                <Route path="/re/accounts" element={<ReAccounts />} />
+                <Route path="/operations" element={<Dashboard />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/tasks" element={<Tasks />} />
@@ -136,6 +166,7 @@ export default function App() {
             </Routes>
             </Suspense>
             </ErrorBoundary>
+            </ReProvider>
           </MetaProvider>
         </ConfirmProvider>
       </ToastProvider>

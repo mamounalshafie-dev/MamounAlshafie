@@ -272,6 +272,7 @@ CREATE TABLE IF NOT EXISTS journal_lines (
   credit REAL DEFAULT 0,
   partner_id INTEGER REFERENCES partners(id) ON DELETE SET NULL,
   project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+  re_project_id INTEGER REFERENCES re_projects(id) ON DELETE SET NULL,
   memo TEXT
 );
 
@@ -340,9 +341,190 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id);
 CREATE INDEX IF NOT EXISTS idx_jl_entry ON journal_lines(entry_id);
 CREATE INDEX IF NOT EXISTS idx_jl_account ON journal_lines(account_id);
+/* ------------------------------------------------------------------ */
+/*  Real-estate suite (Modern Cities)                                  */
+/* ------------------------------------------------------------------ */
+CREATE TABLE IF NOT EXISTS re_projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  city TEXT,
+  district TEXT,
+  phase TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  start_date TEXT,
+  end_date TEXT,
+  land_area REAL DEFAULT 0,
+  total_area REAL DEFAULT 0,
+  buildings_count INTEGER DEFAULT 0,
+  units_count INTEGER DEFAULT 0,
+  budget REAL DEFAULT 0,
+  spent REAL DEFAULT 0,
+  description TEXT,
+  cover TEXT,
+  map_width REAL DEFAULT 1600,
+  map_height REAL DEFAULT 900,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS re_buildings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES re_projects(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  name TEXT,
+  floors INTEGER DEFAULT 6,
+  units_count INTEGER DEFAULT 0,
+  area REAL DEFAULT 0,
+  status TEXT DEFAULT 'active',
+  map_x REAL DEFAULT 0,
+  map_y REAL DEFAULT 0,
+  map_w REAL DEFAULT 120,
+  map_h REAL DEFAULT 90,
+  rotation REAL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS re_units (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES re_projects(id) ON DELETE CASCADE,
+  building_id INTEGER REFERENCES re_buildings(id) ON DELETE SET NULL,
+  code TEXT NOT NULL,
+  floor INTEGER DEFAULT 1,
+  unit_no TEXT,
+  unit_type TEXT DEFAULT 'apartment',
+  bedrooms INTEGER DEFAULT 0,
+  bathrooms INTEGER DEFAULT 0,
+  area REAL DEFAULT 0,
+  price REAL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'available',
+  view TEXT,
+  orientation TEXT,
+  handover_date TEXT,
+  reserved_until TEXT,
+  owner_partner_id INTEGER REFERENCES partners(id) ON DELETE SET NULL,
+  features TEXT,
+  description TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS re_unit_media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  unit_id INTEGER NOT NULL REFERENCES re_units(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'image',
+  url TEXT NOT NULL,
+  caption TEXT,
+  sort INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS re_contracts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  number TEXT NOT NULL UNIQUE,
+  project_id INTEGER NOT NULL REFERENCES re_projects(id) ON DELETE CASCADE,
+  building_id INTEGER,
+  unit_id INTEGER NOT NULL REFERENCES re_units(id) ON DELETE CASCADE,
+  partner_id INTEGER NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
+  type TEXT NOT NULL DEFAULT 'sale',
+  date TEXT NOT NULL,
+  price REAL NOT NULL DEFAULT 0,
+  down_payment REAL NOT NULL DEFAULT 0,
+  installments_count INTEGER NOT NULL DEFAULT 0,
+  installment_amount REAL NOT NULL DEFAULT 0,
+  start_date TEXT,
+  end_date TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  notes TEXT,
+  created_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS re_installments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contract_id INTEGER NOT NULL REFERENCES re_contracts(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL DEFAULT 1,
+  due_date TEXT NOT NULL,
+  amount REAL NOT NULL DEFAULT 0,
+  paid_amount REAL NOT NULL DEFAULT 0,
+  paid_date TEXT,
+  status TEXT NOT NULL DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS re_collections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  number TEXT UNIQUE,
+  contract_id INTEGER REFERENCES re_contracts(id) ON DELETE SET NULL,
+  installment_id INTEGER REFERENCES re_installments(id) ON DELETE SET NULL,
+  unit_id INTEGER,
+  partner_id INTEGER,
+  date TEXT NOT NULL,
+  amount REAL NOT NULL DEFAULT 0,
+  method TEXT DEFAULT 'نقدي',
+  account_id INTEGER,
+  reference TEXT,
+  received_by INTEGER,
+  notes TEXT,
+  journal_entry_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS re_services (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER,
+  building_id INTEGER,
+  unit_id INTEGER,
+  name TEXT NOT NULL,
+  provider TEXT,
+  monthly_fee REAL DEFAULT 0,
+  status TEXT DEFAULT 'active',
+  start_date TEXT,
+  notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS re_maintenance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  number TEXT UNIQUE,
+  project_id INTEGER,
+  building_id INTEGER,
+  unit_id INTEGER,
+  category TEXT,
+  description TEXT,
+  priority TEXT DEFAULT 'normal',
+  status TEXT DEFAULT 'new',
+  cost REAL DEFAULT 0,
+  charged_to TEXT DEFAULT 'company',
+  technician TEXT,
+  reported_at TEXT,
+  due_date TEXT,
+  closed_at TEXT,
+  notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS re_costs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER,
+  building_id INTEGER,
+  category TEXT,
+  description TEXT,
+  amount REAL DEFAULT 0,
+  date TEXT,
+  vendor TEXT,
+  journal_entry_id INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_re_units_project ON re_units(project_id, status);
+CREATE INDEX IF NOT EXISTS idx_re_units_building ON re_units(building_id);
+CREATE INDEX IF NOT EXISTS idx_re_installments_contract ON re_installments(contract_id);
+CREATE INDEX IF NOT EXISTS idx_re_installments_due ON re_installments(due_date, status);
+CREATE INDEX IF NOT EXISTS idx_re_contracts_unit ON re_contracts(unit_id);
+CREATE INDEX IF NOT EXISTS idx_re_collections_date ON re_collections(date);
+
 `;
 
 db.exec(SCHEMA);
+
+/* Migrate databases created before the real-estate journal dimension was added. */
+const journalLineColumns = db.prepare('PRAGMA table_info(journal_lines)').all().map((column) => column.name);
+if (!journalLineColumns.includes('re_project_id')) {
+  db.exec('ALTER TABLE journal_lines ADD COLUMN re_project_id INTEGER REFERENCES re_projects(id) ON DELETE SET NULL');
+}
 
 /* ---------- helpers ---------- */
 export const all = (sql, ...params) => db.prepare(sql).all(...params);

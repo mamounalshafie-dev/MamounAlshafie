@@ -6,6 +6,7 @@ import { inventoryRouter } from './inventory.js';
 import { accountingRouter } from './accounting.js';
 import { hrRouter } from './hr.js';
 import { adminRouter } from './admin.js';
+import { reRouter } from './re.js';
 
 export function registerRoutes(app) {
   app.use('/api', dashboardRouter);
@@ -15,5 +16,6 @@ export function registerRoutes(app) {
   app.use('/api', inventoryRouter);
   app.use('/api', accountingRouter);
   app.use('/api', hrRouter);
+  app.use('/api', reRouter);
   app.use('/api', adminRouter);
 }

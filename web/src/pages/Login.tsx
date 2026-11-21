@@ -9,7 +9,7 @@ import { ApiError } from '../lib/api';
 import { Spinner } from '../components/ui';
 
 const DEMO = [
-  { role: 'مدير النظام', name: 'م. مؤمن الشافعي', email: 'admin@noor.iq', password: 'admin123', color: '#4f46e5' },
+  { role: 'مدير النظام', name: 'أحمد الحسيني', email: 'admin@noor.iq', password: 'admin123', color: '#4f46e5' },
   { role: 'مديرة المشاريع', name: 'سارة الحسيني', email: 'sara@noor.iq', password: 'noor123', color: '#0ea5e9' },
   { role: 'محاسب رئيسي', name: 'زينب عبد الله', email: 'zainab@noor.iq', password: 'noor123', color: '#10b981' },
   { role: 'موظفة', name: 'نورة العتيبي', email: 'noura@noor.iq', password: 'noor123', color: '#8b5cf6' },
@@ -32,7 +32,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      toast.push('مرحباً بك في نور ERP 👋', 'success');
+      toast.push('مرحباً بك في المدن الحديثة 👋', 'success');
       navigate(location.state?.from || '/', { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'تعذّر تسجيل الدخول، حاول مرة أخرى');
@@ -52,7 +52,7 @@ export default function Login() {
               </svg>
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 17 }}>نور ERP</div>
+              <div style={{ fontWeight: 800, fontSize: 17 }}>المدن الحديثة</div>
               <div style={{ fontSize: 10.5, letterSpacing: '0.18em', color: '#7d8db0' }}>ENTERPRISE SUITE</div>
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function Login() {
             <div><b>99.9%</b><span>جهوزية النظام</span></div>
           </div>
           <p className="tiny" style={{ marginTop: 18, color: '#5f6f8f' }}>
-            © 2026 شركة نور التقنية المحدودة · جميع الحقوق محفوظة
+            © 2026 شركة المدن الحديثة للتطوير العقاري · جميع الحقوق محفوظة
           </p>
         </div>
       </div>

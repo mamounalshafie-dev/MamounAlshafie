@@ -12,7 +12,8 @@ const balances = (from, to) => {
   if (to) { where.push('je.date <= ?'); params.push(to); }
   return all(
     `SELECT a.id, a.code, a.name, a.type, a.parent_id,
-            COALESCE(SUM(jl.debit), 0) AS debit, COALESCE(SUM(jl.credit), 0) AS credit
+            COALESCE(SUM(CASE WHEN je.id IS NOT NULL THEN jl.debit ELSE 0 END), 0) AS debit,
+            COALESCE(SUM(CASE WHEN je.id IS NOT NULL THEN jl.credit ELSE 0 END), 0) AS credit
        FROM accounts a
        LEFT JOIN journal_lines jl ON jl.account_id = a.id
        LEFT JOIN journal_entries je ON je.id = jl.entry_id AND ${where.join(' AND ')}
@@ -66,9 +67,12 @@ accountingRouter.get('/journal-entries/:id', (req, res) => {
   const entry = get(`${JE_SELECT} WHERE je.id = ?`, req.params.id);
   if (!entry) throw new HttpError(404, 'القيد غير موجود');
   const lines = all(
-    `SELECT jl.*, a.code AS account_code, a.name AS account_name, p.name AS partner_name, pr.name AS project_name
+    `SELECT jl.*, a.code AS account_code, a.name AS account_name, p.name AS partner_name,
+            COALESCE(pr.name, rp.name) AS project_name, COALESCE(pr.code, rp.code) AS project_code
        FROM journal_lines jl JOIN accounts a ON a.id = jl.account_id
-       LEFT JOIN partners p ON p.id = jl.partner_id LEFT JOIN projects pr ON pr.id = jl.project_id
+       LEFT JOIN partners p ON p.id = jl.partner_id
+       LEFT JOIN projects pr ON pr.id = jl.project_id
+       LEFT JOIN re_projects rp ON rp.id = jl.re_project_id
       WHERE jl.entry_id = ? ORDER BY jl.id`, entry.id
   );
   res.json({ entry, lines });
@@ -120,14 +124,17 @@ accountingRouter.delete('/journal-entries/:id', (req, res) => {
 });
 
 accountingRouter.get('/reports/trial-balance', (req, res) => {
-  const rows = balances(req.query.from, req.query.to)
-    .filter((r) => r.debit || r.credit)
-    .map((r) => ({
-      code: r.code, name: r.name, type: r.type,
-      debit: money(r.debit), credit: money(r.credit), balance: money(r.debit - r.credit),
-    }));
-  const totals = rows.reduce((acc, r) => ({ debit: acc.debit + r.debit, credit: acc.credit + r.credit }), { debit: 0, credit: 0 });
-  res.json({ rows, totals: { debit: money(totals.debit), credit: money(totals.credit) }, balanced: Math.abs(totals.debit - totals.credit) < 0.01 });
+  const rawRows = balances(req.query.from, req.query.to).filter((r) => r.debit || r.credit);
+  const rawTotals = rawRows.reduce((acc, row) => ({ debit: acc.debit + row.debit, credit: acc.credit + row.credit }), { debit: 0, credit: 0 });
+  const rows = rawRows.map((r) => ({
+    code: r.code, name: r.name, type: r.type,
+    debit: money(r.debit), credit: money(r.credit), balance: money(r.debit - r.credit),
+  }));
+  res.json({
+    rows,
+    totals: { debit: money(rawTotals.debit), credit: money(rawTotals.credit) },
+    balanced: Math.abs(rawTotals.debit - rawTotals.credit) < 0.01,
+  });
 });
 
 accountingRouter.get('/reports/profit-loss', (req, res) => {
@@ -158,24 +165,30 @@ accountingRouter.get('/reports/profit-loss', (req, res) => {
 accountingRouter.get('/reports/balance-sheet', (req, res) => {
   const to = req.query.to || iso();
   const rows = balances(null, to);
-  const assets = rows.filter((r) => r.type === 'asset' && (r.debit || r.credit))
-    .map((r) => ({ code: r.code, name: r.name, amount: money(r.debit - r.credit) }));
-  const liabilities = rows.filter((r) => r.type === 'liability' && (r.debit || r.credit))
-    .map((r) => ({ code: r.code, name: r.name, amount: money(r.credit - r.debit) }));
-  const equity = rows.filter((r) => r.type === 'equity' && (r.debit || r.credit))
-    .map((r) => ({ code: r.code, name: r.name, amount: money(r.credit - r.debit) }));
-  const income = rows.filter((r) => r.type === 'income').reduce((s, r) => s + r.credit - r.debit, 0);
-  const expense = rows.filter((r) => r.type === 'expense').reduce((s, r) => s + r.debit - r.credit, 0);
-  const netIncome = money(income - expense);
-  const totalAssets = money(assets.reduce((s, r) => s + r.amount, 0));
-  const totalLiabilities = money(liabilities.reduce((s, r) => s + r.amount, 0));
-  const totalEquity = money(equity.reduce((s, r) => s + r.amount, 0) + netIncome);
+  const assetRows = rows.filter((r) => r.type === 'asset' && (r.debit || r.credit));
+  const liabilityRows = rows.filter((r) => r.type === 'liability' && (r.debit || r.credit));
+  const equityRows = rows.filter((r) => r.type === 'equity' && (r.debit || r.credit));
+  const assets = assetRows.map((r) => ({ code: r.code, name: r.name, amount: money(r.debit - r.credit) }));
+  const liabilities = liabilityRows.map((r) => ({ code: r.code, name: r.name, amount: money(r.credit - r.debit) }));
+  const equity = equityRows.map((r) => ({ code: r.code, name: r.name, amount: money(r.credit - r.debit) }));
+  const income = rows.filter((r) => r.type === 'income').reduce((sum, r) => sum + r.credit - r.debit, 0);
+  const expense = rows.filter((r) => r.type === 'expense').reduce((sum, r) => sum + r.debit - r.credit, 0);
+  const netIncomeRaw = income - expense;
+  const netIncome = money(netIncomeRaw);
+  const assetsRaw = assetRows.reduce((sum, r) => sum + r.debit - r.credit, 0);
+  const liabilitiesRaw = liabilityRows.reduce((sum, r) => sum + r.credit - r.debit, 0);
+  const equityRaw = equityRows.reduce((sum, r) => sum + r.credit - r.debit, 0) + netIncomeRaw;
+  const totalAssets = money(assetsRaw);
+  const totalLiabilities = money(liabilitiesRaw);
+  const totalEquity = money(equityRaw);
+  const liabilitiesAndEquity = money(liabilitiesRaw + equityRaw);
   res.json({
     to, assets, liabilities, equity, netIncome,
     totals: {
       assets: totalAssets, liabilities: totalLiabilities, equity: totalEquity,
-      liabilitiesAndEquity: money(totalLiabilities + totalEquity),
+      liabilitiesAndEquity,
     },
+    balanced: Math.abs(assetsRaw - liabilitiesRaw - equityRaw) < 0.01,
   });
 });
 

@@ -157,6 +157,66 @@ const run = async () => {
   const aging = await req('GET', '/reports/ar-aging');
   check('AR aging report', Array.isArray(aging.data?.summary));
 
+  console.log('\nReal estate projects & accounting links');
+  const reMeta = await req('GET', '/re/meta');
+  const reProjectA = reMeta.data?.projects?.find((p) => p.code === 'MC-A');
+  const reProjectB = reMeta.data?.projects?.find((p) => p.code === 'MC-B');
+  check('real-estate projects seeded', !!reProjectA && !!reProjectB);
+
+  const plan = await req('GET', '/re/projects/MC-A/plan');
+  const planStats = plan.data?.stats || {};
+  check('master plan includes status totals', plan.status === 200 && planStats.total > 0
+    && (planStats.sold + planStats.available + planStats.reserved + planStats.rented) === planStats.total);
+  check('master plan has clickable units and buildings', plan.data?.units?.length > 0 && plan.data?.buildings?.length > 0);
+
+  const globalAccounts = await req('GET', '/re/accounts?project=all');
+  const projectAccounts = await req('GET', '/re/accounts?project=MC-A');
+  const baseMap = globalAccounts.data?.map || {};
+  const otherIncome = (globalAccounts.data?.accounts || []).find((a) => a.type === 'income' && a.code !== baseMap.revenue)?.code;
+  const customRevenue = otherIncome || baseMap.revenue;
+  const updatedMap = { ...projectAccounts.data?.map, revenue: customRevenue };
+  const mapSaved = await req('PATCH', '/re/accounts', { project: 'MC-A', map: updatedMap });
+  const projectMapAfter = await req('GET', '/re/accounts?project=MC-A');
+  const projectBMap = await req('GET', '/re/accounts?project=MC-B');
+  check('save account map for one project', mapSaved.status === 200 && projectMapAfter.data?.map?.revenue === customRevenue);
+  check('project account map does not leak to another project', projectBMap.data?.map?.revenue === baseMap.revenue);
+
+  const unitForContract = (plan.data?.units || []).find((u) => u.status === 'available');
+  const projectPartners = await req('GET', '/re/partners?project=MC-A&pageSize=5');
+  const partnerForContract = projectPartners.data?.items?.[0];
+  if (unitForContract && partnerForContract) {
+    const reContract = await req('POST', '/re/contracts', {
+      unitId: unitForContract.id, partnerId: partnerForContract.id, type: 'sale',
+      price: unitForContract.price, downPayment: 0, installmentsCount: 2,
+      date: '2026-11-21', startDate: '2026-12-01', notes: 'اختبار تكامل المشروع والحسابات',
+    });
+    check('create real-estate contract', reContract.status === 201 && !!reContract.data?.id);
+    if (reContract.status === 201) {
+      const detailReContract = await req('GET', `/re/contracts/${reContract.data.id}`);
+      const entries = await req('GET', `/journal-entries?q=${encodeURIComponent(reContract.data.number)}`);
+      const revenueEntry = (entries.data?.items || []).find((entry) => entry.reference === reContract.data.number);
+      const entryDetail = revenueEntry ? await req('GET', `/journal-entries/${revenueEntry.id}`) : { data: null };
+      const revenueLine = (entryDetail.data?.lines || []).some((line) => line.account_code === customRevenue);
+      check('contract creates installment schedule', detailReContract.data?.installments?.length === 2);
+      check('contract posts to selected project revenue account', !!revenueEntry && revenueLine, JSON.stringify(entryDetail.data?.lines || []).slice(0, 160));
+      const firstInstallment = detailReContract.data?.installments?.[0];
+      if (firstInstallment) {
+        const collection = await req('POST', '/re/collections', {
+          installmentId: firstInstallment.id, amount: 1000, method: 'تحويل بنكي',
+          date: '2026-11-21', reference: 'API-RE-TEST', notes: 'اختبار ربط التحصيل',
+        });
+        check('collection records balanced accounting entry', collection.status === 201 && collection.data?.journalEntryId > 0);
+      }
+    }
+  } else {
+    check('create real-estate contract', false, 'no available unit or partner');
+    check('contract creates installment schedule', false, 'contract not created');
+    check('contract posts to selected project revenue account', false, 'contract not created');
+    check('collection records balanced accounting entry', false, 'contract not created');
+  }
+  const treasury = await req('GET', '/re/treasury?project=MC-A');
+  check('treasury scoped to selected project', treasury.status === 200 && treasury.data?.project?.code === 'MC-A' && Array.isArray(treasury.data?.monthly));
+
   console.log('\nHR');
   const emp = await req('POST', '/employees', {
     name: 'موظف اختبار', departmentId: 5, jobTitle: 'مطور', salary: 3000000, allowances: 500000, hireDate: '2025-01-01',

@@ -143,7 +143,11 @@ export function PageHead({ title, sub, actions, breadcrumb, icon }: any) {
             {breadcrumb.map((b: any, i: number) => (
               <React.Fragment key={i}>
                 <ChevronLeft size={12} />
-                {b.to ? <Link to={b.to}>{b.label}</Link> : <span>{b.label}</span>}
+                {b.to
+                  ? <Link to={b.to}>{b.label}</Link>
+                  : b.onClick
+                    ? <button type="button" className="breadcrumb-action" onClick={b.onClick}>{b.label}</button>
+                    : <span>{b.label}</span>}
               </React.Fragment>
             ))}
           </div>
@@ -203,13 +207,13 @@ export function Textarea(props: any) {
   return <textarea className={cx('textarea', props.className)} {...props} />;
 }
 
-export function Select({ options, placeholder, ...rest }: any) {
+export function Select({ options, placeholder, children, ...rest }: any) {
   return (
     <select className="select" {...rest}>
       {placeholder && <option value="">{placeholder}</option>}
-      {options.map((o: any) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
+      {Array.isArray(options)
+        ? options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)
+        : children}
     </select>
   );
 }

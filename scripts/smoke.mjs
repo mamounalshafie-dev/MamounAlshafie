@@ -48,6 +48,9 @@ const routes = process.argv.slice(2).length ? process.argv.slice(2) : [
   '/inventory', '/inventory/1', '/accounting', '/accounting/journal', '/accounting/reports',
   '/reports', '/hr/employees', '/hr/employees/1', '/hr/attendance', '/hr/payroll',
   '/hr/leaves', '/settings', '/activity', '/profile',
+  '/re/plan', '/re/units', '/re/units/1', '/re/contracts', '/re/installments',
+  '/re/collections', '/re/services', '/re/maintenance', '/re/costs', '/re/treasury',
+  '/re/reports', '/re/partners', '/re/accounts', '/operations',
 ];
 
 const dom = await JSDOM.fromURL(`http://127.0.0.1:${PORT}/`, {

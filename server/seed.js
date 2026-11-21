@@ -1,6 +1,7 @@
 import { db, run, get, all, tx, setSetting, logActivity } from './db.js';
 import { hashPassword } from './auth.js';
 import { rng } from './util.js';
+import { seedRealEstate } from './re-seed.js';
 
 const rand = rng(20261121);
 const pick = (arr) => arr[Math.floor(rand() * arr.length)];
@@ -165,6 +166,8 @@ export function seed() {
       'invoices', 'quotation_lines', 'quotations', 'po_lines', 'purchase_orders', 'timesheets', 'tasks',
       'project_members', 'projects', 'stock_moves', 'products', 'partners', 'employees', 'departments',
       'accounts', 'activities', 'sessions', 'settings', 'users',
+      're_unit_media', 're_collections', 're_installments', 're_contracts', 're_maintenance',
+      're_services', 're_costs', 're_units', 're_buildings', 're_projects',
     ];
     db.exec('PRAGMA foreign_keys = OFF;');
     for (const t of tables) db.exec(`DELETE FROM ${t};`);
@@ -173,24 +176,24 @@ export function seed() {
 
     /* ----- settings ----- */
     setSetting('company', {
-      name: 'شركة نور التقنية المحدودة',
-      nameEn: 'Noor Technology Co. Ltd.',
-      taxId: 'IQ-2019-44821',
-      cr: 'بغداد - 44128',
-      address: 'بغداد، الكرادة، شارع 62، مبنى نور - الطابق 4',
-      phone: '+964 770 123 4567',
-      email: 'info@noor.iq',
-      website: 'www.noor.iq',
+      name: 'شركة المدن الحديثة للتطوير العقاري',
+      nameEn: 'Modern Cities Real Estate Development',
+      taxId: 'IQ-2014-88213',
+      cr: 'بغداد - 21884',
+      address: 'بغداد، زيونة، شارع الربيعي، برج المدن الحديثة - الطابق 12',
+      phone: '+964 781 555 9000',
+      email: 'info@moderncities.iq',
+      website: 'www.moderncities.iq',
       currency: 'IQD',
       currencySymbol: 'د.ع',
       taxRate: 15,
       fiscalYear: '2026',
-      bankName: 'مصرف الرافدين - فرع الكرادة',
-      bankAccount: 'IQ12 RAFI 0001 2345 6789 0123',
+      bankName: 'مصرف بغداد - فرع زيونة',
+      bankAccount: 'IQ98 BAGD 0001 8821 4455 0099',
     });
     setSetting('modules', {
       projects: true, sales: true, purchases: true, inventory: true,
-      accounting: true, hr: true, reports: true,
+      accounting: true, hr: true, reports: true, realestate: true, collection: true, maintenance: true,
     });
 
     /* ----- departments ----- */
@@ -356,6 +359,7 @@ export function seed() {
       [19, '5400', 'مصروفات تشغيلية', 'expense', 16],
       [20, '5500', 'مصروفات تسويق وبيع', 'expense', 16],
       [21, '5600', 'استهلاك وإطفاء', 'expense', 16],
+      [22, '2500', 'دفعات مقدمة من العملاء', 'liability', 7],
     ];
     ACCOUNTS.forEach(([id, code, name, type, parent]) => {
       run('INSERT INTO accounts (id, code, name, type, parent_id, active) VALUES (?, ?, ?, ?, ?, 1)',
@@ -691,6 +695,9 @@ export function seed() {
           off === 0 ? 'draft' : 'paid', iso(off + 5));
       });
     });
+
+    /* ----- real-estate suite ----- */
+    seedRealEstate();
 
     /* ----- activity feed ----- */
     const ACTS = [
