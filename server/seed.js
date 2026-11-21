@@ -721,8 +721,14 @@ export function seed() {
 
 if (process.argv[1] && process.argv[1].endsWith('seed.js')) {
   const force = process.argv.includes('--force');
-  if (isSeeded() && !force) {
-    console.log('Database already seeded. Use --force to reseed.');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('SEED BLOCKED: demo data may never be seeded in production.');
+    process.exitCode = 2;
+  } else if (force && process.env.ALLOW_DESTRUCTIVE_SEED !== 'I_ACKNOWLEDGE_DELETION') {
+    console.error('SEED BLOCKED: --force requires ALLOW_DESTRUCTIVE_SEED=I_ACKNOWLEDGE_DELETION on an isolated disposable database.');
+    process.exitCode = 2;
+  } else if (isSeeded() && !force) {
+    console.log('Database already initialized. No changes made.');
   } else {
     seed();
     console.log('✔ Seed completed');
