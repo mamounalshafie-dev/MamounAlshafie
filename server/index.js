@@ -13,7 +13,12 @@ const PORT = Number(process.env.PORT || 4000);
 const app = express();
 
 if (!isSeeded()) {
-  console.log('→ Seeding database for first run…');
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Production has no initialized users. Demo seeding is disabled; provision a real administrator using an audited setup process.'
+    );
+  }
+  console.log('→ Seeding the isolated development database for first run…');
   seed();
 }
 
