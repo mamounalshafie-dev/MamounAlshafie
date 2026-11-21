@@ -1,0 +1,23 @@
+{
+  "name": "noor-erp",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NOOR ERP — نظام إدارة موارد المؤسسات المتكامل",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "server": "node server/index.js",
+    "build": "npm --prefix web run build",
+    "start": "NODE_ENV=production node server/index.js",
+    "seed": "node server/seed.js --force",
+    "test": "node scripts/test-api.mjs",
+    "test:ui": "npm --prefix web run build -- --config vite.smoke.config.ts && node scripts/smoke.mjs && node scripts/check-login.mjs",
+    "test:login": "node scripts/check-login.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jsdom": "^31.0.1"
+  }
+}
