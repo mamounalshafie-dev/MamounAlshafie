@@ -53,6 +53,7 @@ npm start                  # NODE_ENV=production — يخدم الواجهة + A
 | عروض الأسعار | `/quotations` | إنشاء/تعديل، بنود وضريبة، تحويل إلى فاتورة بضغطة واحدة |
 | الفواتير | `/invoices` | دورة كاملة (مسودة → مرسلة → جزئية → مدفوعة)، دفعات، ترحيل محاسبي تلقائي، طباعة |
 | أوامر الشراء | `/purchase-orders` | استلام يزيد المخزون تلقائياً، ترحيل للمحاسبة |
+| رقابة تكاليف المشاريع | `/re/cost-control` | جدول كميات BOQ، فواتير الموردين، المستخلصات، انحراف الكميات والأسعار، ومبررات الاعتماد |
 | المخزون | `/inventory` | قيمة المخزون، الحد الأدنى، حركات وارد/صادر/تسوية، أفضل المنتجات مبيعاً |
 | المحاسبة | `/accounting` | دليل الحسابات (شجري)، القيود اليومية، أرصدة |
 | اليومية | `/accounting/journal` | بحث، عرض القيد وأطرافه، قيد يدوي متوازن إجبارياً |
@@ -93,21 +94,21 @@ server/
   seed.js           بيانات تجريبية واقعية (14 مستخدم، 16 مشروع، 148 مهمة، 42 فاتورة…)
   auth.js           جلسات + تشفير كلمات المرور (scrypt)
   routes/           projects, tasks, crm, sales, purchases, inventory,
-                    accounting, reports, hr, admin
+                    accounting, reports, hr, admin, re, re-cost-control
 web/
-  src/pages/        28 صفحة
+  src/pages/        واجهات وحدات ERP والعقارات والرقابة
   src/components/   نظام التصميم، الجداول، الرسوم، نموذج المستندات، لوحة الأوامر
   src/lib/          عميل API، تنسيق الأرقام والتواريخ، سياق التطبيق
   src/styles.css    نظام تصميم كامل (ألوان، بطاقات، جداول، كانبان، طباعة)
 scripts/
   dev.mjs           تشغيل API + Vite معاً
-  api-test.mjs      46 اختبار وظيفي لواجهة الـ API
-  smoke.mjs         فحص عرض 26 مساراً في متصفح بلا واجهة (jsdom)
+  api-test.mjs      71 اختباراً وظيفياً لواجهة الـ API
+  smoke.mjs         فحص عرض 41 مساراً في متصفح بلا واجهة (jsdom)
 ```
 
 ### نقاط نهاية API (مختصر)
 
-`/api/auth/*` · `/api/dashboard` · `/api/meta` · `/api/search` · `/api/projects` · `/api/tasks` · `/api/timesheets` · `/api/partners` · `/api/quotations` · `/api/invoices` · `/api/purchase-orders` · `/api/products` · `/api/stock-moves` · `/api/accounts` · `/api/journal-entries` · `/api/reports/*` · `/api/employees` · `/api/attendance` · `/api/payslips` · `/api/leaves` · `/api/users` · `/api/settings` · `/api/activities` · `/api/nav-counts` · `/api/system/info`
+`/api/auth/*` · `/api/dashboard` · `/api/meta` · `/api/search` · `/api/projects` · `/api/tasks` · `/api/timesheets` · `/api/partners` · `/api/quotations` · `/api/invoices` · `/api/purchase-orders` · `/api/products` · `/api/stock-moves` · `/api/accounts` · `/api/journal-entries` · `/api/re/cost-control/*` · `/api/re/*` · `/api/reports/*` · `/api/employees` · `/api/attendance` · `/api/payslips` · `/api/leaves` · `/api/users` · `/api/settings` · `/api/activities` · `/api/nav-counts` · `/api/system/info`
 
 المصادقة: جلسة عبر كوكي `noor_session` أو ترويسة `x-session-token`.
 
@@ -116,8 +117,8 @@ scripts/
 ## 5. الاختبارات
 
 ```bash
-npm test          # 46 اختبار API على قاعدة بيانات معزولة (إنشاء/تعديل/تحقق/توازن القيود)
-npm run test:ui   # بناء حزمة فحص + عرض 26 مساراً في jsdom
+npm test          # 71 اختبار API على قاعدة بيانات معزولة (بما فيها رقابة تكاليف المشاريع)
+npm run test:ui   # بناء حزمة فحص + عرض 41 مساراً في jsdom
 ```
 
 يغطي الاختبار: المصادقة، إنشاء المشاريع والمهام وإعادة احتساب التقدم، تحويل عرض السعر إلى فاتورة،

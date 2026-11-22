@@ -5,7 +5,7 @@ import {
   Building2, Package, Landmark, BarChart3, UserCog, CalendarDays, Wallet, Settings, Activity,
   Search, Bell, Sun, Moon, Menu, X, LogOut, Plus, ChevronDown, BookOpen, ShieldCheck, Sparkles,
   CircleDollarSign, ClipboardList, ArrowLeftRight, HandCoins, Map as MapIcon, Home, Wifi, Wrench,
-  HardHat, FileSignature, CalendarClock, Building,
+  HardHat, FileSignature, CalendarClock, Building, ClipboardCheck,
 } from 'lucide-react';
 import { useAuth, useApi, useToast } from '../lib/app-context';
 import { api, ApiError } from '../lib/api';
@@ -49,6 +49,7 @@ const NAV = [
     label: 'المالية',
     items: [
       { to: '/re/costs', label: 'التكاليف', icon: HardHat },
+      { to: '/re/cost-control', label: 'رقابة تكاليف المشاريع', icon: ClipboardCheck },
       { to: '/re/treasury', label: 'الصندوق والبنوك', icon: Landmark },
       { to: '/re/accounts', label: 'ربط الحسابات العقارية', icon: ArrowLeftRight },
       { to: '/accounting', label: 'دليل الحسابات', icon: BookOpen },

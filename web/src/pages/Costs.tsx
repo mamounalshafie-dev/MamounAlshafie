@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HardHat, Link2, Plus, Receipt, Wallet } from 'lucide-react';
+import { ClipboardCheck, HardHat, Link2, Plus, Receipt, Wallet } from 'lucide-react';
 import { api, ApiError, qs } from '../lib/api';
 import { useApi, useToast } from '../lib/app-context';
 import { useRe } from '../lib/re-context';
@@ -34,6 +34,7 @@ export default function Costs() {
         actions={(
           <div className="row gap-8">
             <Btn variant="ghost" icon={<Link2 size={15} />} onClick={() => navigate('/re/accounts')}>ربط الحسابات</Btn>
+            <Btn variant="ghost" icon={<ClipboardCheck size={15} />} onClick={() => navigate('/re/cost-control')}>رقابة التكاليف</Btn>
             <Btn icon={<Plus size={15} />} onClick={() => setOpen(true)}>تسجيل تكلفة</Btn>
           </div>
         )}

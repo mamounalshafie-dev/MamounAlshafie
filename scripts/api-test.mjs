@@ -217,6 +217,46 @@ const run = async () => {
   const treasury = await req('GET', '/re/treasury?project=MC-A');
   check('treasury scoped to selected project', treasury.status === 200 && treasury.data?.project?.code === 'MC-A' && Array.isArray(treasury.data?.monthly));
 
+  console.log('\nProject cost control');
+  const boq = await req('POST', '/re/cost-control/boq', {
+    project: 'MC-A', itemCode: 'BOQ-CTRL-01', category: 'خرسانة', description: 'خرسانة مسلحة للاختبار',
+    unit: 'م3', plannedQty: 10, plannedRate: 100000,
+  });
+  check('create project BOQ baseline', boq.status === 201 && boq.data?.planned_qty === 10 && boq.data?.planned_rate === 100000);
+  const duplicateBoq = await req('POST', '/re/cost-control/boq', {
+    project: 'MC-A', itemCode: 'BOQ-CTRL-01', description: 'بند مكرر', unit: 'م3', plannedQty: 1, plannedRate: 1000,
+  });
+  check('reject duplicate BOQ code per project', duplicateBoq.status === 400);
+  const costInvoice = await req('POST', '/re/cost-control/invoices', {
+    project: 'MC-A', invoiceNo: 'COST-INV-TEST', supplier: 'مورد الاختبار', invoiceDate: '2026-11-21',
+    lines: [{ boqItemId: boq.data?.id, quantity: 9, unitRate: 110000 }],
+  });
+  check('record supplier invoice against BOQ', costInvoice.status === 201 && costInvoice.data?.total_amount === 990000);
+  const submittedInvoice = await req('PATCH', `/re/cost-control/invoices/${costInvoice.data?.id}/status`, { status: 'submitted' });
+  check('submit invoice into review workflow', submittedInvoice.data?.status === 'submitted' && submittedInvoice.data?.warnings?.length > 0);
+  const approveWithoutReason = await req('PATCH', `/re/cost-control/invoices/${costInvoice.data?.id}/status`, { status: 'approved' });
+  check('require variance reason before approval', approveWithoutReason.status === 400);
+  const approvedInvoice = await req('PATCH', `/re/cost-control/invoices/${costInvoice.data?.id}/status`, { status: 'approved', reason: 'فرق سعر معتمد من إدارة المشروع' });
+  check('approve invoice with variance justification', approvedInvoice.data?.status === 'approved' && approvedInvoice.data?.variance_reason?.length > 0);
+  const certificate = await req('POST', '/re/cost-control/certificates', {
+    project: 'MC-A', certificateNo: 'COST-CERT-TEST', contractor: 'مقاول الاختبار', certificateDate: '2026-11-21',
+    periodFrom: '2026-11-01', periodTo: '2026-11-21',
+    lines: [{ boqItemId: boq.data?.id, quantity: 3, unitRate: 100000 }],
+  });
+  check('record contractor payment certificate against BOQ', certificate.status === 201 && certificate.data?.total_amount === 300000);
+  const submittedCertificate = await req('PATCH', `/re/cost-control/certificates/${certificate.data?.id}/status`, { status: 'submitted' });
+  const approvedCertificate = await req('PATCH', `/re/cost-control/certificates/${certificate.data?.id}/status`, { status: 'approved' });
+  check('review and approve payment certificate', submittedCertificate.data?.status === 'submitted' && approvedCertificate.data?.status === 'approved');
+  const costControl = await req('GET', '/re/cost-control?project=MC-A');
+  const controlledItem = costControl.data?.items?.find((item) => item.id === boq.data?.id);
+  check('compare BOQ with invoices and certified quantities', controlledItem?.invoiced_qty === 9 && controlledItem?.certified_qty === 3
+    && controlledItem?.approved_invoice_amount === 990000 && controlledItem?.approved_certificate_amount === 300000);
+  check('surface price variance in project control report', controlledItem?.flags?.some((flag) => flag.includes('5%')) && costControl.data?.summary?.flaggedItems > 0);
+  const otherProjectControl = await req('GET', '/re/cost-control?project=MC-B');
+  check('keep BOQ control scoped to its project', !otherProjectControl.data?.items?.some((item) => item.id === boq.data?.id));
+  const lockedBoq = await req('PATCH', `/re/cost-control/boq/${boq.data?.id}`, { plannedRate: 120000 });
+  check('lock BOQ baseline after documents are linked', lockedBoq.status === 409);
+
   console.log('\nHR');
   const emp = await req('POST', '/employees', {
     name: 'موظف اختبار', departmentId: 5, jobTitle: 'مطور', salary: 3000000, allowances: 500000, hireDate: '2025-01-01',

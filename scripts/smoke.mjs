@@ -49,7 +49,7 @@ const routes = process.argv.slice(2).length ? process.argv.slice(2) : [
   '/reports', '/hr/employees', '/hr/employees/1', '/hr/attendance', '/hr/payroll',
   '/hr/leaves', '/settings', '/activity', '/profile',
   '/re/plan', '/re/units', '/re/units/1', '/re/contracts', '/re/installments',
-  '/re/collections', '/re/services', '/re/maintenance', '/re/costs', '/re/treasury',
+  '/re/collections', '/re/services', '/re/maintenance', '/re/costs', '/re/cost-control', '/re/treasury',
   '/re/reports', '/re/partners', '/re/accounts', '/operations',
 ];
 

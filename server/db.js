@@ -509,12 +509,96 @@ CREATE TABLE IF NOT EXISTS re_costs (
   journal_entry_id INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS re_boq_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES re_projects(id) ON DELETE CASCADE,
+  building_id INTEGER REFERENCES re_buildings(id) ON DELETE SET NULL,
+  item_code TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'عام',
+  description TEXT NOT NULL,
+  unit TEXT NOT NULL DEFAULT 'عدد',
+  planned_qty REAL NOT NULL DEFAULT 0,
+  planned_rate REAL NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(project_id, item_code)
+);
+
+CREATE TABLE IF NOT EXISTS re_supplier_invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES re_projects(id) ON DELETE CASCADE,
+  invoice_no TEXT NOT NULL,
+  supplier TEXT NOT NULL,
+  invoice_date TEXT NOT NULL,
+  due_date TEXT,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'submitted', 'approved', 'rejected', 'paid')),
+  total_amount REAL NOT NULL DEFAULT 0,
+  notes TEXT,
+  variance_reason TEXT,
+  rejection_reason TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TEXT,
+  paid_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(project_id, invoice_no)
+);
+
+CREATE TABLE IF NOT EXISTS re_supplier_invoice_lines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL REFERENCES re_supplier_invoices(id) ON DELETE CASCADE,
+  boq_item_id INTEGER NOT NULL REFERENCES re_boq_items(id) ON DELETE RESTRICT,
+  description TEXT,
+  quantity REAL NOT NULL DEFAULT 0,
+  unit_rate REAL NOT NULL DEFAULT 0,
+  amount REAL NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS re_payment_certificates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES re_projects(id) ON DELETE CASCADE,
+  certificate_no TEXT NOT NULL,
+  contractor TEXT NOT NULL,
+  certificate_date TEXT NOT NULL,
+  period_from TEXT,
+  period_to TEXT,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'submitted', 'approved', 'rejected', 'paid')),
+  total_amount REAL NOT NULL DEFAULT 0,
+  notes TEXT,
+  variance_reason TEXT,
+  rejection_reason TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TEXT,
+  paid_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(project_id, certificate_no)
+);
+
+CREATE TABLE IF NOT EXISTS re_payment_certificate_lines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  certificate_id INTEGER NOT NULL REFERENCES re_payment_certificates(id) ON DELETE CASCADE,
+  boq_item_id INTEGER NOT NULL REFERENCES re_boq_items(id) ON DELETE RESTRICT,
+  description TEXT,
+  quantity REAL NOT NULL DEFAULT 0,
+  unit_rate REAL NOT NULL DEFAULT 0,
+  amount REAL NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_re_units_project ON re_units(project_id, status);
 CREATE INDEX IF NOT EXISTS idx_re_units_building ON re_units(building_id);
 CREATE INDEX IF NOT EXISTS idx_re_installments_contract ON re_installments(contract_id);
 CREATE INDEX IF NOT EXISTS idx_re_installments_due ON re_installments(due_date, status);
 CREATE INDEX IF NOT EXISTS idx_re_contracts_unit ON re_contracts(unit_id);
 CREATE INDEX IF NOT EXISTS idx_re_collections_date ON re_collections(date);
+CREATE INDEX IF NOT EXISTS idx_re_boq_project ON re_boq_items(project_id, item_code);
+CREATE INDEX IF NOT EXISTS idx_re_invoice_project_status ON re_supplier_invoices(project_id, status, invoice_date);
+CREATE INDEX IF NOT EXISTS idx_re_invoice_line_boq ON re_supplier_invoice_lines(boq_item_id);
+CREATE INDEX IF NOT EXISTS idx_re_certificate_project_status ON re_payment_certificates(project_id, status, certificate_date);
+CREATE INDEX IF NOT EXISTS idx_re_certificate_line_boq ON re_payment_certificate_lines(boq_item_id);
 
 `;
 

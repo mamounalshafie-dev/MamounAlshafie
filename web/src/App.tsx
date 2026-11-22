@@ -16,6 +16,7 @@ const Collections = React.lazy(() => import('./pages/Collections'));
 const Services = React.lazy(() => import('./pages/Services'));
 const Maintenance = React.lazy(() => import('./pages/Maintenance'));
 const Costs = React.lazy(() => import('./pages/Costs'));
+const CostControl = React.lazy(() => import('./pages/CostControl'));
 const Treasury = React.lazy(() => import('./pages/Treasury'));
 const ReReports = React.lazy(() => import('./pages/ReReports'));
 const RePartners = React.lazy(() => import('./pages/RePartners'));
@@ -131,6 +132,7 @@ export default function App() {
                 <Route path="/re/services" element={<Services />} />
                 <Route path="/re/maintenance" element={<Maintenance />} />
                 <Route path="/re/costs" element={<Costs />} />
+                <Route path="/re/cost-control" element={<CostControl />} />
                 <Route path="/re/treasury" element={<Treasury />} />
                 <Route path="/re/reports" element={<ReReports />} />
                 <Route path="/re/partners" element={<RePartners />} />
